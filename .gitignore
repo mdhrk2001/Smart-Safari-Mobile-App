@@ -48,3 +48,6 @@ yarn-error.*
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase config file
+google-services.json

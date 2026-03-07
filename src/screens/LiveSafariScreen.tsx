@@ -336,7 +336,17 @@ export default function LiveSafariScreen({ navigation, route }: any) {
                     </View>
 
                     <View style={styles.actionRow}>
-                        <ActionButton icon="information-circle" label="Info" color="#2962FF" />
+                        {/* UPDATE: Added onPress to navigate and pass the detectedAnimal object */}
+                        <ActionButton
+                            icon="information-circle"
+                            label="Info"
+                            color="#2962FF"
+                            onPress={() => {
+                                stopNarration();
+                                // UPDATED: Now we also pass the currently selected language!
+                                navigation.navigate('AnimalInfo', { animal: detectedAnimal, language: language });
+                            }}
+                        />
                         <ActionButton icon="volume-high" label="Listen" color="#00C853" onPress={handleListenPress} />
                         <ActionButton icon="book" label="Log" color="#FF9100" />
                         <ActionButton icon="warning" label="Alert" color="#D50000" />

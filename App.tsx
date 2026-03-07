@@ -19,6 +19,7 @@ import DiaryScreen from './src/screens/DiaryScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import ParkSelectionScreen from './src/screens/ParkSelectionScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import AnimalInfoScreen from './src/screens/AnimalInfoScreen';
 
 // 1. Define types for our Tabs
 // Added { parkId: string } so each tab knows which park data to load
@@ -35,8 +36,9 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   ParkSelection: undefined;
-  MainTabs: { parkId: string }; // <-- The Tabs now expect a parkId parameter
-  LiveSafari: undefined; 
+  MainTabs: { parkId: string };
+  LiveSafari: undefined;
+  AnimalInfo: { animal: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -112,6 +114,13 @@ export default function App() {
 
         {/* Deep Screens (Hides Tab Bar) */}
         <Stack.Screen name="LiveSafari" component={LiveSafariScreen} />
+
+        {/* Added the AnimalInfo screen to the stack so we can navigate to it from LiveSafariScreen */}
+        <Stack.Screen 
+            name="AnimalInfo" 
+            component={AnimalInfoScreen} 
+            options={{ presentation: 'modal' }} // Optional: makes it slide up like a modal on iOS
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -5,13 +5,11 @@ import { View, StyleSheet, Text, TouchableOpacity, useWindowDimensions, Activity
 import { Camera, CameraProps, useCameraDevice, useCameraPermission, useFrameProcessor, useCameraFormat } from 'react-native-vision-camera';
 import { useTensorflowModel } from 'react-native-fast-tflite';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
-// NEW: Imported useAnimatedProps for the Camera zoom
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, useAnimatedProps, AnimatedProps } from 'react-native-reanimated';
 import { Worklets } from 'react-native-worklets-core';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// NEW: Imported Gesture Handler for Pinch-to-Zoom
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 import { postProcessYOLO, Detection } from '../utils/ObjectDetection';
@@ -31,7 +29,6 @@ const AVAILABLE_LANGUAGES = [
     { code: 'es', label: 'Español (Spanish)' }
 ];
 
-// NEW: Create an Animated version of the Vision Camera so it can react to Reanimated zoom values
 const AnimatedCamera = Animated.createAnimatedComponent(Camera) as React.ComponentClass<
     AnimatedProps<CameraProps>
 >;
@@ -75,39 +72,31 @@ export default function LiveSafariScreen({ navigation, route }: any) {
 
     const frameCounter = useSharedValue(0);
 
-    // --- NEW: ZOOM STATE & GESTURE LOGIC ---
     const zoom = useSharedValue(1);
     const startZoom = useSharedValue(1);
 
-    // Set initial zoom level once the camera device is loaded
     useEffect(() => {
         if (device) {
             zoom.value = device.neutralZoom;
         }
     }, [device, zoom]);
 
-    // Define the Pinch Gesture
     const pinchGesture = Gesture.Pinch()
         .onBegin(() => {
-            // Save the current zoom level when the user starts pinching
             startZoom.value = zoom.value;
         })
         .onUpdate((event) => {
             if (device) {
-                // Multiply the starting zoom by the user's pinch scale
                 const newZoom = startZoom.value * event.scale;
-                // Clamp the zoom so they can't zoom out past 1x or in past the phone's maximum
                 zoom.value = Math.max(Math.min(newZoom, device.maxZoom), device.minZoom);
             }
         });
 
-    // Pass the calculated zoom value to the AnimatedCamera
     const animatedCameraProps = useAnimatedProps(() => {
         return {
             zoom: zoom.value,
         } as any;
     }, [zoom]);
-    // ----------------------------------------
 
     useEffect(() => {
         const loadRecentLanguages = async () => {
@@ -183,13 +172,22 @@ export default function LiveSafariScreen({ navigation, route }: any) {
         }
     };
 
+    // NEW: Helper function to grab the correct localized name
+    const getLocalizedName = () => {
+        if (!detectedAnimal) return 'Scanning...';
+        // Legacy support in case you haven't updated all documents yet
+        if (typeof detectedAnimal.name === 'string') return detectedAnimal.name;
+        // Return active language, fallback to english, fallback to unknown
+        return detectedAnimal.name?.[language] || detectedAnimal.name?.['en'] || 'Unknown Species';
+    };
+
     const updateUIState = Worklets.createRunOnJS((classIndex: number | null, confidence: number) => {
         if (classIndex === null) {
             setDetectedAnimal(null);
             setConfidenceText("");
         } else {
             const animalData = animalDictRef.current[classIndex] || {
-                name: 'Unknown Species',
+                name: { en: 'Unknown Species' }, // UPDATED fallback to match map structure
                 scientificName: 'Not registered in database',
                 status: 'Unknown'
             };
@@ -271,10 +269,8 @@ export default function LiveSafariScreen({ navigation, route }: any) {
     if (!hasPermission) return <View style={styles.container}><Text style={{ color: 'white' }}>Requesting Camera...</Text></View>;
     if (device == null) return <View style={styles.container}><Text style={{ color: 'white' }}>Loading Camera...</Text></View>;
 
-    // NEW: Wrapped the entire screen in GestureHandlerRootView
     return (
         <GestureHandlerRootView style={styles.container}>
-            {/* NEW: Wrapped the Camera in GestureDetector to listen for pinches */}
             <GestureDetector gesture={pinchGesture}>
                 <AnimatedCamera
                     style={StyleSheet.absoluteFill}
@@ -284,7 +280,7 @@ export default function LiveSafariScreen({ navigation, route }: any) {
                     frameProcessor={frameProcessor}
                     pixelFormat="yuv"
                     videoStabilizationMode="off"
-                    animatedProps={animatedCameraProps} // Attach the zoom value here
+                    animatedProps={animatedCameraProps}
                 />
             </GestureDetector>
 
@@ -311,8 +307,9 @@ export default function LiveSafariScreen({ navigation, route }: any) {
 
             <Animated.View style={animatedBoxStyle}>
                 <View style={styles.labelTag}>
+                    {/* UPDATED: Calling getLocalizedName() for the AR label */}
                     <Text style={styles.labelText}>
-                        {detectedAnimal?.name || 'Scanning...'} <Text style={{ fontWeight: '300' }}>{confidenceText}</Text>
+                        {getLocalizedName()} <Text style={{ fontWeight: '300' }}>{confidenceText}</Text>
                     </Text>
                 </View>
                 <View style={[styles.corner, styles.topLeft]} />
@@ -329,7 +326,8 @@ export default function LiveSafariScreen({ navigation, route }: any) {
 
                     <View style={styles.animalInfoContainer}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.animalName}>{detectedAnimal.name}</Text>
+                            {/* UPDATED: Calling getLocalizedName() for the UI Panel */}
+                            <Text style={styles.animalName}>{getLocalizedName()}</Text>
                             <Text style={styles.scientificName}>{detectedAnimal.scientificName || 'Scientific name unavailable'}</Text>
                         </View>
                         <View style={styles.statusBadge}>
@@ -385,17 +383,13 @@ const ActionButton = ({ icon, label, color, onPress }: { icon: any, label: strin
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
-
     topOverlay: { position: 'absolute', top: 0, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, zIndex: 50 },
     iconButton: { padding: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20 },
-
     langButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginRight: 10, height: 32 },
     langText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-
     liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3D00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, height: 32 },
     redDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff', marginRight: 6 },
     liveText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-
     labelTag: { position: 'absolute', top: -30, left: -2, backgroundColor: '#00E676', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 4 },
     labelText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
     corner: { position: 'absolute', width: 20, height: 20, borderColor: '#FF3D00', borderWidth: 4 },
@@ -403,7 +397,6 @@ const styles = StyleSheet.create({
     topRight: { top: -2, right: -2, borderBottomWidth: 0, borderLeftWidth: 0 },
     bottomLeft: { bottom: -2, left: -2, borderTopWidth: 0, borderRightWidth: 0 },
     bottomRight: { bottom: -2, right: -2, borderTopWidth: 0, borderLeftWidth: 0 },
-
     bottomSheet: { position: 'absolute', bottom: 0, width: '100%', padding: 24, paddingBottom: 40, backgroundColor: 'rgba(0,0,0,0.85)', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
     recordButtonOuter: { position: 'absolute', top: -35, alignSelf: 'center', width: 70, height: 70, borderRadius: 35, borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
     recordButtonInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#D50000' },
@@ -416,10 +409,7 @@ const styles = StyleSheet.create({
     actionBtn: { alignItems: 'center' },
     actionIconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
     actionLabel: { color: '#fff', fontSize: 12 },
-
     alertOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20, zIndex: 100 },
-
-    // --- Modal Styles ---
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#1A1A1A', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '70%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

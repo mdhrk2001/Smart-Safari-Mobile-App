@@ -1,5 +1,6 @@
 // App.tsx
 
+import 'react-native-gesture-handler'; // MUST BE AT THE VERY TOP
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navigation/native-stack';

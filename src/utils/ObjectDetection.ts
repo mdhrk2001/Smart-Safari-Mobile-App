@@ -12,7 +12,7 @@ export interface Detection {
 }
 
 const NUM_ANCHORS = 8400; 
-const NUM_CLASSES = 2; // Updated to 1 for the Sri Lankan Elephant model
+const NUM_CLASSES = 2; // Sri Lankan Elephant & Sri Lankan Leopard model
 const CONFIDENCE_THRESHOLD = 0.50; 
 const IOU_THRESHOLD = 0.45; 
 
